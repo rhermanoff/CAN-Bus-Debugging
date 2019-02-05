@@ -3,9 +3,9 @@
 from distutils.core import setup
 
 setup(
-	name='HyperCam',
+	name='HyperCan',
 	version='0.1',
-	packages=['hypercam'],
+	packages=['hypercan'],
 	license='Creative Commons Attribution-Noncomercial-Share Alike license',
 	long_description=open('README.md').read(),
 )

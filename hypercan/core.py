@@ -127,7 +127,7 @@ class driver:
 						'k1_on':True if state_bytes[1] == '1' else False,
 						'fault_state':True if state_bytes[0] == '1' else False,
 					},
-					'timer':int(hex(message.data[1]<<16) || message.data[2], 16), # Little trick to combine these two properly
+					'timer':int(hex(message.data[1]<<16) | message.data[2], 16), # Little trick to combine these two properly
 					'flags':{
 						'fan':True if flag_bytes[7] == '1' else False,
 						'llim':True if flag_bytes[6] == '1' else False,
@@ -181,36 +181,34 @@ class driver:
 				'device':'bms',
 				'type':'0+4',
 				'data':{
-					'current':hex_to_signed_int((message.data[0]>>16)|message.data[1, 16),
+					'current':hex_to_signed_int((message.data[0]>>16)|message.data[1], 16),
 					'charge_limit':int((message.data[2]>>16)|message.data[3], 16),
 					'dischage_limit':int((message.data[4]>>16)|message.data[5],16),
 				}
 			}
-		elif arbitration_id == 0x625:
+		elif arbitration_id == 0x625: # TODO
 			return {
 				'success':True,
 				'device':'bms',
 				'type':None,
 				'data':{
-					'energy_in':int(
-					'energy_out':
 				}
 			}
-		elif arbitration_id == 0x626:
+		elif arbitration_id == 0x626: # TODO
 			return {
 				'success':True,
 				'device':'bms',
 				'type':None,
 				'data':{}
 			}
-		elif arbitration_id == 0x627:
+		elif arbitration_id == 0x627: # TODO
 			return {
 				'success':True,
 				'device':'bms',
 				'type':None,
 				'data':{}
 			}
-		elif arbitration_id == 0x628:
+		elif arbitration_id == 0x628: # TODO
 			return {
 				'success':True,
 				'device':'bms',
