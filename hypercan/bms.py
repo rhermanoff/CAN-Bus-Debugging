@@ -118,31 +118,41 @@ class bms():
 			}
 		elif arbitration_id == 0x625: # TODO
 			return {
+			
+				energy_in_bits = ''
+				energy_out_bits = ''
+				for i in range(4):
+					energy_in_bits += format(message.data[i],'b')
+					enerty_out_bits += format(message.data[i + 4],'b')
+			
 				'success':True,
 				'device':'bms',
-				'type':None,
+				'type':'0+5',
 				'data':{
+					'energy_in':int(energy_in_bits, 16),
+					'energy_out':int(energy_out_bits, 16),
 				}
 			}
 		elif arbitration_id == 0x626: # TODO
 			return {
 				'success':True,
 				'device':'bms',
-				'type':None,
-				'data':{}
+				'type':'0_6',
+				'data':{
+				}
 			}
 		elif arbitration_id == 0x627: # TODO
 			return {
 				'success':True,
 				'device':'bms',
-				'type':None,
+				'type':'0+7',
 				'data':{}
 			}
 		elif arbitration_id == 0x628: # TODO
 			return {
 				'success':True,
 				'device':'bms',
-				'type':None,
+				'type':'0+8',
 				'data':{}
 			}
 		
