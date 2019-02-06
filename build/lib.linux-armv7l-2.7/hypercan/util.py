@@ -45,4 +45,3 @@ def hex_to_signed_int(hex):
     if uintval >= math.pow(2,bits-1):
         uintval = int(0 - (math.pow(2,bits) - uintval))
     return uintval
-	

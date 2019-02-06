@@ -4,3 +4,5 @@ hypercan\__init__.py
 hypercan\core.py
 hypercan\util.py
 hypercan\device.py
+hypercan\bms.py
+hypercan\ccs.py
