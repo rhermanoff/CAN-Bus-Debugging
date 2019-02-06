@@ -4,9 +4,11 @@ import can
 import time
 import os
 import struct
+from hypercan import device
+
 can.rc['interface'] = 'socketcan'
  
-from can import Bus
+from can.interfaces.interface import Bus
 from can import Message
  
 
@@ -26,8 +28,11 @@ class driver:
 	"""
 	def __init__(self, interface, verbose = False, listeners = None):
 		self.bus = Bus(interface, bustype = 'socketcan')
-		self.notifier = can.Notifier(bus, [on_message_received].extend(listeners))
+		self.notifier = can.Notifier(self.bus, [self.on_message_received])
 		self.verbose = verbose
+		self.listeners = listeners
+		self.bms = device.bms()
+		self.ccs = device.ccs()
 		
 	"""
 	Starts a loop to keep notifier alive.  Do not use 
@@ -40,8 +45,16 @@ class driver:
 				time.sleep(1)
 		except KeyboardInterrupt:
 			print("Exception Handled!")
-			bus.shutdown()
-			notifier.stop()
+			self.bus.shutdown()
+			self.notifier.stop()
+	
+	
+	"""
+	TODO DOC
+	"""
+	def notify_listeners(self, hypercan_message):
+		for listener in self.listeners:
+			listener(hypercan_message)
 
 	"""
 	Function is called whenever the notifier receives a message.
@@ -58,46 +71,27 @@ class driver:
 				print(var+": "+str(canFrameVars[var]))
 		
 		# Properly handle messages
-		if message['arbitration_id'] == 0x18FF50E5:
-			return ccs.handle(message)
-		elif message['arbitration_id'] >= 0x620 and message['arbitration_id'] <= 0x628:
-			return bms.handle(message)
+		if message.arbitration_id == 0x18FF50E5:
+			self.notify_listeners(self.ccs.handle_message(message))
+		elif message.arbitration_id >= 0x620 and message.arbitration_id <= 0x628:
+			self.notify_listeners(self.bms.handle_message(message))
+			
+			
 		else:
-			# Eventually I need to add an eexception class here....and add the motor controller
-			raise Exception('Unknown arbitration ID '+str(message['arbitration_id']))
+			# Eventually I need to add an exception class here....and add the motor controller
+			# It is also noteworthy that this block may be deleted completely, there are many
+			# arbitration IDs that we can safely ignore transmitted over the bus
+			print('Unknown arbitration ID '+hex(message.arbitration_id))
+			#raise Exception('Unknown arbitration ID '+str(message.arbitration_id))
 			
-			
-			
-			
-###OLD CODE 
-###OLD CODE 
-###OLD CODE 
-###OLD CODE 
-###OLD CODE 
-###OLD CODE 
-				
-	def send_message(bus, Message):
+
+	"""
+	Attempts to send message over CAN bus
+	@param Message  CAN message object to TX
+	@throws on CAN error
+	"""
+	def send_message(self, Message):
 		try:
-			bus.send(Message);
+			self.bus.send(Message);
 		except:
 			print("Some error was handled")
-
-
-	def set_charger(bus, data):
-		print("Enabling Charger")
-		Message.extended_id = True
-		Message.is_remote_frame = False
-		Message.id_type = 1
-		Message.is_error_frame = False
-		Message.arbitration_id = 0x1806E5F4 # The arbitration ID of the charger
-		Message.dlc = 5
-		Message.data = bytearray([ vol_set_h, vol_set_l, cur_set_h, cur_set_l, enable ]) # 50.4V @ 10A
-		send_message(bus, Message)
-
-	def enable_charger(bus):
-		print("Enabling Charger")
-		set_charger(bus, [0x05, 0x04, 0x01, 0x00, 0x01])
-
-	def disable_charger(bus):
-		print("Disabling Charger")
-		set_charger(bus, [0x05, 0x04, 0x01, 0x00, 0x00])
