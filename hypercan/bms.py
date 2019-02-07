@@ -4,6 +4,7 @@ import can
 from can import Message
 from device import device
 from util import *
+from apscheduler.schedulers.background import BackgroundScheduler
 
 """
 This function handles any messages from the BMS
@@ -16,6 +17,10 @@ class bms(device):
 	Initializes all BMS attributes
 	"""
 	def __init__(self):
+		# Daemonic scheduler for contactor requests
+		self.scheduler = BackgroundScheduler(daemon=True)
+		
+		# BMS attributes
 		self.relay_fault = None
 		self.k3_on = None
 		self.k2_on = None
@@ -72,7 +77,7 @@ class bms(device):
 	@param message  CAN message to parse
 	@return hypercan_message
 	"""
-	def handle_message(message):
+	def handle_message(self, message):
 		# Bleh.  This is probably a traction message, which means we have
 		# 9 possible arbitration IDs...  It also sends out other information
 		# meant for things we don't currently use, so we will have to handle
@@ -83,7 +88,7 @@ class bms(device):
 		# 
 		# The BMS uses little endian multi-byte values
 		
-		arbitration_id = message['arbitration_id']
+		arbitration_id = message.arbitration_id
 		
 		if arbitration_id == 0x620:
 			# Unneeded message, just says ELITHION
@@ -103,10 +108,10 @@ class bms(device):
 			}
 		elif arbitration_id == 0x622:
 			# Now we're to the meat and potatoes!
-			state_bytes = format(message.data[0],'b')
-			flag_bytes = format(message.data[3],'b')
-			level_bytes = format(message.data[5],'b')
-			warnings_bytes = format(message.data[6],'b')
+			state_bytes = format(message.data[0],'b').zfill(8)
+			flag_bytes = format(message.data[3],'b').zfill(8)
+			level_bytes = format(message.data[5],'b').zfill(8)
+			warnings_bytes = format(message.data[6],'b').zfill(8)
 			
 			hypercan_message = {
 				'success':True,
@@ -120,7 +125,7 @@ class bms(device):
 						'k1_on':bool(state_bytes[1]),
 						'fault_state':bool(state_bytes[0]),
 					},
-					'timer':int(hex(message.data[1]<<16) | message.data[2], 16), # Little trick to combine these two properly
+					'timer':int(message.data[1]<<16 | message.data[2], 16), # Little trick to combine these two properly
 					'flags':{
 						'fan':bool(flag_bytes[7]),
 						'llim':bool(flag_bytes[6]),
@@ -238,3 +243,31 @@ class bms(device):
 		self.update_device(hypercan_message)
 		
 		return hypercan_message
+		
+	"""
+	Internal function to send contactor request over bus
+	@param driver  CAN driver to send message to
+	@param enable Enable contactors
+	"""
+	def _send_contactor_request(self, driver, enable):
+		# Construct and send message
+		message = Message(
+			extended_id = False,
+			is_remote_frame = False,
+			is_error_frame = False,
+			arbitration_id = 0x632,
+			dlc = 8,
+			data = [0x01 if enable else 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]
+		)
+		
+		driver.send_message(message)
+		
+	"""
+	Starts a scheduler to send a contactor request every 300ms
+	@param driver  CAN driver to send message to
+	@param enable  Enable contactors
+	"""
+	def switch_contactors(self, driver, enable):
+		# Register job with scheduler and begin
+		self.scheduler.add_job(self._send_contactor_request,'interval',args=[driver, enable], seconds=0.3)
+		self.scheduler.start()

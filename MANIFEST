@@ -6,3 +6,4 @@ hypercan\util.py
 hypercan\device.py
 hypercan\bms.py
 hypercan\ccs.py
+hypercan\motorController.py

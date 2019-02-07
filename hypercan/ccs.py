@@ -4,6 +4,7 @@ import can
 from can import Message
 from device import device
 from util import *
+from apscheduler.schedulers.background import BackgroundScheduler
 
 """
 This function handles any messages from the CCS
@@ -15,6 +16,10 @@ class ccs(device):
 	Initializes all CCS attributes
 	"""
 	def __init__(self):
+		# Daemonic scheduler for contactor requests
+		self.scheduler = BackgroundScheduler(daemon=True)
+		
+		# CCS attributes
 		self.voltage = None
 		self.current = None
 		self.hardware_failure = None
@@ -28,14 +33,13 @@ class ccs(device):
 	@param message  CAN message to parse
 	@return hypercan_message
 	"""
-	def handle_message(message):
+	def handle_message(self, message):
 		# Decode voltage and current, {V/C} = {V/C}_high_bit * 10 + {V/C}_low_bit / 10.0
 		voltage = message.data[0] * 10 + message.data[1] / 10.0
 		current = message.data[2] * 10 + message.data[3] / 10.0
 
 		# Status_bytes contains array of bit data for charger status, maybe a hack?
-		status_bytes = format(message.data[4], 'b')
-		pprint(status_bytes)
+		status_bytes = format(message.data[4], 'b').zfill(5)
 		
 		hypercan_message = {
 			'success':True,
@@ -58,20 +62,13 @@ class ccs(device):
 		return hypercan_message
 		
 	"""
-	Commands CCS to begin charging at a specified voltage and current
-	PLEASE READ:
-	THE CHARGER HAS THE ABILITY TO OUTPUT EXTREMELY HIGH VOLTAGES AND
-	HIGH CURRENTS.  IF YOU MISUSE THE CHARGER AND COMMAND IT WRONG YOU
-	COULD SERIOUSLY INJURE OR KILL YOURSELF.  THE BATTERY IS ALSO EXTREMELY
-	SENSITIVE TO CHARGING AND CARE SHOULD BE TAKEN TO ENSURE THAT THE BMS
-	CAN SHUT OFF THE CHARGER WHEN HLIM IS REACHED.  FAILURE TO DO SO WILL
-	RESULT IN THE BATTERY BEING OVERCHARGED AND EXPLODING.
-	
+	Internal function to command CCS to begin charging at a specified voltage and current
 	@param driver  CAN driver to send message to
 	@param voltage  Voltage to a precision of 0.1v	
 	@param current  Current to a precision of 0.1A
+	@param enable  Enable charge output
 	"""
-	def charge(self, driver, voltage, current):
+	def _send_charge_request(self, driver, voltage, current, enable):
 	
 		# Check for bad values
 		if current < 0 or current > 12:
@@ -85,24 +82,31 @@ class ccs(device):
 			is_remote_frame = False,
 			is_error_frame = False,
 			arbitration_id = 0x1806E5F4,
-			dlc = 5,
-			data = bytearray(float_to_ccs_value(voltage) + float_to_ccs_value(current) + [0]),
+			dlc = 8,
+			data = bytearray(float_to_ccs_value(voltage) + float_to_ccs_value(current) + [0x00 if enable else 0x01, 0, 0, 0]),
 		)
+		
 		driver.send_message(message)
 		
 	"""
-	Commands CCS to begin stop charging and reset voltage/current
+	Instructs the charger to begin or end a charge cycle.
+	Functionally tarts a scheduler to send a contactor request 
+	every second
+	
+	PLEASE READ:
+	THE CHARGER HAS THE ABILITY TO OUTPUT EXTREMELY HIGH VOLTAGES AND
+	HIGH CURRENTS.  IF YOU MISUSE THE CHARGER AND COMMAND IT WRONG YOU
+	COULD SERIOUSLY INJURE OR KILL YOURSELF.  THE BATTERY IS ALSO EXTREMELY
+	SENSITIVE TO CHARGING AND CARE SHOULD BE TAKEN TO ENSURE THAT THE BMS
+	CAN SHUT OFF THE CHARGER WHEN HLIM IS REACHED.  FAILURE TO DO SO WILL
+	RESULT IN THE BATTERY BEING OVERCHARGED AND EXPLODING.
+	
 	@param driver  CAN driver to send message to
+	@param voltage  Voltage to a precision of 0.1v	
+	@param current  Current to a precision of 0.1A
+	@param enable  Enable charge output
 	"""
-	def halt_charge(self, driver):
-		# Construct and send message
-		message = Message(
-			extended_id = True,
-			is_remote_frame = False,
-			is_error_frame = False,
-			arbitration_id = 0x1806E5F4,
-			dlc = 5,
-			data = bytearray([0x00, 0x00, 0x00, 0x00, 0x01]),
-		)
-		
-		driver.send_message(message)
+	def set_charge(self, driver, voltage, current, enable):
+		# Register job with scheduler and begin
+		self.scheduler.add_job(self._send_charge_request,'interval',args=[driver, voltage, current, enable], seconds=1)
+		self.scheduler.start()

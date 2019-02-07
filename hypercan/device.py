@@ -11,8 +11,8 @@ class device():
 	"""
 	def update_device(self, hypercan_message):
 		# Iterate data replacing valid keys
-		for key in hypercan_message.data:
+		for key in hypercan_message['data']:
 			if not hasattr(self,key):
 				raise Exception("Key " + key + " does not exist for object " + self.__name__)
 				
-			setattr(self, key, hypercan_message.data[key])
+			setattr(self, key, hypercan_message['data'][key])

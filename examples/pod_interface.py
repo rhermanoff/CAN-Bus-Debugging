@@ -7,8 +7,6 @@ from hypercan import core, device, ccs, bms
 from pprint import pprint
 
 def main():
-	click.echo(click.style('Initializing Hypercan', bg='green', fg='black'))
-
 	# Create a CCS and BMS object to eventually send messages to
 	ccs = hypercan.ccs.ccs()
 	bms = hypercan.bms.bms()
@@ -33,7 +31,6 @@ def main():
 	 
 	
 	# Enter a blocking loop to listen for messages
-	click.echo(click.style('Begin Listening', bg='green', fg='black'))
 	can_driver.listen()
 	
 	
@@ -41,7 +38,6 @@ def main():
 # Only used if you need to directly interface
 # with CAN messages, otherwise use device attributes
 def listener(hypercan_message, can_driver):
-	click.echo(click.style('Message Received:', bg='blue', fg='white'))
 	pprint(hypercan_message)
 
 if __name__ == "__main__":

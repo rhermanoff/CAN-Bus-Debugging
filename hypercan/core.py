@@ -54,7 +54,7 @@ class driver:
 	"""
 	def notify_listeners(self, hypercan_message):
 		for listener in self.listeners:
-			listener(hypercan_message)
+			listener(hypercan_message, self)
 
 	"""
 	Function is called whenever the notifier receives a message.
@@ -75,9 +75,7 @@ class driver:
 			self.notify_listeners(self.ccs.handle_message(message))
 		elif message.arbitration_id >= 0x620 and message.arbitration_id <= 0x628:
 			self.notify_listeners(self.bms.handle_message(message))
-			
-			
-		else:
+		elif self.verbose:
 			# Eventually I need to add an exception class here....and add the motor controller
 			# It is also noteworthy that this block may be deleted completely, there are many
 			# arbitration IDs that we can safely ignore transmitted over the bus
