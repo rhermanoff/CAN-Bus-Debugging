@@ -46,38 +46,3 @@ def hex_to_signed_int(hex):
         uintval = int(0 - (math.pow(2,bits) - uintval))
     return uintval
 	
-"""
-Converts an array of hex values to a little endian integer
-@param data  Array of hex values
-@return  Integer representation of hex value
-"""
-def hex_to_little_endian_int(data):
-	parsed_data = map(lambda x: format(x, 'x').zfill(2), data)
-	parsed_data.reverse()
-	return int('0x' + ''.join(parsed_data), 16)
-
-"""
-Converts an int to a little endian formatted
-array of hex values
-@param val  Integer to convert
-@return list  List of hex values
-"""
-def int_to_little_endian_hex(val):
-    int_hex = hex(val)[2::]
-    hex_len = len(int_hex)
-    filled_hex = int_hex.zfill(hex_len + 1 if hex_len % 2 == 1 else hex_len)
-    split_hex = wrap(filled_hex, 2)
-    split_hex.reverse()
-    print(split_hex)
-    x = map(lambda x: hex(int(x, 16)), split_hex)
-    print(x)
-	
-"""
-Splits string s into a list of w lengths
-@param s
-@param w
-@return list
-"""
-def wrap(s, w):
-    return [s[i:i + w] for i in range(0, len(s), w)]
-	
