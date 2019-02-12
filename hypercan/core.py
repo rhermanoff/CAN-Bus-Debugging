@@ -1,10 +1,11 @@
 #!/usr/bin/python
  
 import can
+import click
 import time
 import os
 import struct
-from hypercan import bms, ccs
+from hypercan import bms, ccs, motorController
 
 can.rc['interface'] = 'socketcan'
  
@@ -32,6 +33,7 @@ class driver:
 		self.listeners = listeners
 		self.bms = bms.bms()
 		self.ccs = ccs.ccs()
+		self.motorController = motorController.motorController()
 		self.notifier = can.Notifier(self.bus, [self.on_message_received])
 		
 	"""
@@ -79,8 +81,8 @@ class driver:
 			# Eventually I need to add an exception class here....and add the motor controller
 			# It is also noteworthy that this block may be deleted completely, there are many
 			# arbitration IDs that we can safely ignore transmitted over the bus
-			print('Unknown arbitration ID '+hex(message.arbitration_id))
 			#raise Exception('Unknown arbitration ID '+str(message.arbitration_id))
+			click.echo(click.style('Unknown arbitration ID '+hex(message.arbitration_id), bg='red', fg='white'))
 			
 
 	"""
